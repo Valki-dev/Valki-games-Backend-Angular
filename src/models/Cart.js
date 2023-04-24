@@ -1,6 +1,7 @@
+const { sequelize } = require("../database/connection");
 const { DataTypes } = require("sequelize");
 
-const Cart = (sequelize) => sequelize.define("Cart", {
+const Cart = sequelize.define("Cart", {
     userId: {
         type: DataTypes.STRING(30),
         allowNull: false,

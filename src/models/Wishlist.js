@@ -1,6 +1,9 @@
+const { sequelize } = require("../database/connection");
 const { DataTypes } = require("sequelize");
+const { User } = require("./User");
+const { Videogame } = require("./Videogame");
 
-const Wishlist = (sequelize) => sequelize.define("Wishlist", {
+const Wishlist = sequelize.define("Wishlist", {
     userId: {
         type: DataTypes.STRING(30),
         allowNull: false,

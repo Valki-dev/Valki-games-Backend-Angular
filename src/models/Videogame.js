@@ -1,7 +1,8 @@
+const { sequelize } = require('../database/connection');
 const { DataTypes } = require('sequelize');
-const { models } = require("../database/connection");
+const { Wishlist } = require("./Wishlist");
 
-const Videogame = (sequelize)  => sequelize.define("Videogame", {
+const Videogame = sequelize.define("Videogame", {
     id: {
         type: DataTypes.INTEGER,
         allowNull: false,
@@ -51,7 +52,6 @@ const Videogame = (sequelize)  => sequelize.define("Videogame", {
     tableName: 'products',
     timestamps: false,
 });
-
 
 module.exports = {
     Videogame

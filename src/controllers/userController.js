@@ -1,14 +1,15 @@
-const { models } = require("../database/connection");
 const bycript = require("bcryptjs");
 const saltRounds = 10;
 const { v4: uuid } = require("uuid");
 const { Videogame } = require("../models/Videogame");
+const { User } = require("../models/User");
+const { Wishlist } = require("../models/Wishlist");
 
 //<<-------------------- POST -------------------->>
 const createUser = async (req, res) => {
     let { body: { userName, email, password, phoneNumber } } = req;
-    
-    if(
+
+    if (
         !userName ||
         userName.trim() == "" ||
         !email ||
@@ -23,7 +24,7 @@ const createUser = async (req, res) => {
 
     const foundedUser = await getUserByEmail(email);
 
-    if(!foundedUser) {
+    if (!foundedUser) {
         password = bycript.hashSync(password, saltRounds);
 
         const user = {
@@ -37,17 +38,17 @@ const createUser = async (req, res) => {
         }
 
         try {
-            const createdUser = await models.User.create(user);
+            const createdUser = await User.create(user);
 
-            if(!createdUser) {
+            if (!createdUser) {
                 res.status(400).send({ message: "Some error occurred while creating user" });
             }
 
             res.status(200).send(createdUser);
-        } catch(error) {
+        } catch (error) {
             res.status(error?.status || 500).send(error?.message || error);
         }
-        
+
     } else {
         res.status(400).send({ message: "That count already exists" });
     }
@@ -57,7 +58,7 @@ const createUser = async (req, res) => {
 const logIn = async (req, res) => {
     const { body: { email, password } } = req;
 
-    if(
+    if (
         !email ||
         email.trim() == "" ||
         !password ||
@@ -68,8 +69,8 @@ const logIn = async (req, res) => {
 
     const storagedUser = await getUserByEmail(email);
 
-    if(storagedUser) {
-        if(bycript.compareSync(password, storagedUser.password)) {
+    if (storagedUser) {
+        if (bycript.compareSync(password, storagedUser.password)) {
             res.status(200).send(storagedUser);
         } else {
             res.status(400).send({ message: "Some error occurred while loggin in the user" });
@@ -83,7 +84,7 @@ const logIn = async (req, res) => {
 const addToWishlist = async (req, res) => {
     const { body: { userId, productId } } = req;
 
-    if(
+    if (
         !userId ||
         userId.trim() == "" ||
         !productId ||
@@ -93,14 +94,14 @@ const addToWishlist = async (req, res) => {
     }
 
     try {
-        const wishlist = await models.Wishlist.findAll({
+        const wishlist = await Wishlist.findAll({
             where: {
                 userId: userId
             }
         })
 
         console.log(wishlist);
-    } catch(error) {
+    } catch (error) {
         res.status(error?.status || 500).send(error?.message || error);
     }
 }
@@ -110,28 +111,28 @@ const addToWishlist = async (req, res) => {
 const getUserById = async (req, res) => {
     const { id } = req.params;
 
-    if(
-        !id || 
+    if (
+        !id ||
         id.trim() == ""
     ) {
         res.status(400).send({ status: "FAILED", data: { error: "Key is missing or is empty: 'id'" } });
     }
 
     try {
-        const user = await models.User.findByPk(id);
+        const user = await User.findByPk(id);
 
-        if(!user) {
+        if (!user) {
             res.status(404).send({ message: "Some error occurred while retrieving user" });
         }
 
         res.status(200).send(user);
-    } catch(error) {
+    } catch (error) {
         res.status(error?.status || 500).send(error?.message || error);
     }
 }
 
 const getUserByEmail = async (email) => {
-    const user = await models.User.findOne({
+    const user = await User.findOne({
         where: {
             email: email
         }
@@ -143,41 +144,33 @@ const getUserByEmail = async (email) => {
 const getUserWishlist = async (req, res) => {
     const { id } = req.params;
 
-    if(
-        !id || 
+    if (
+        !id ||
         id.trim() == ""
     ) {
         res.status(400).send({ status: "FAILED", data: { error: "Key is missing or is empty: userId" } })
     }
 
     try {
-        //! Aquí hay que hacer un JOIN con la tabla 'products'
 
-        const wishlist = await models.Wishlist.findAll({
+        const wishlistProducts = await Wishlist.findAll({
             include: {
                 model: Videogame,
+                as: 'products',
                 required: true
             },
             where: {
                 userId: id
             }
-        });
+        })
+        
+        if (wishlistProducts) {
+            res.status(200).send(wishlistProducts);
+        } else {
+            res.status(404).send({ message: "Some error occurred while retrieving user's wishlist" });
+        }
 
-        console.log(wishlist);
-
-        // const wishlist = await models.Wishlist.findAll({
-        //     where: {
-        //         userId: id
-        //     }
-        // });
-
-        // if(wishlist) {
-        //     res.status(200).send(wishlist)
-        // } else {
-        //     res.status(404).send({ message: "Some error occurred while retrieving user's wishlist" });
-        // }
-
-    } catch(error) {
+    } catch (error) {
         res.status(error?.status || 500).send(error?.message || error);
     }
 }
@@ -187,7 +180,7 @@ const getUserWishlist = async (req, res) => {
 const updateUser = async (req, res) => {
     const { body: { userId, userName, email, password, phoneNumber, subscriptionDate } } = req;
 
-    if(
+    if (
         !userId ||
         userId.trim() == "" ||
         !userName ||
@@ -205,12 +198,12 @@ const updateUser = async (req, res) => {
     }
 
     try {
-        const user = await models.User.findByPk(userId);
+        const user = await User.findByPk(userId);
 
-        if(user) {
+        if (user) {
             const hashedPassword = bycript.hashSync(password, saltRounds);
 
-            const userUpdated = await models.User.update({
+            const userUpdated = await User.update({
                 userName: userName,
                 email: email,
                 password: hashedPassword,
@@ -221,15 +214,15 @@ const updateUser = async (req, res) => {
                 }
             })
 
-            if(!userUpdated) {
+            if (!userUpdated) {
                 res.status(500).send({ message: "Some error occurred while updating user" });
-            } 
+            }
 
             res.status(200).send(userUpdated)
         } else {
             res.status(500).send({ message: "Some error occurred while updating user" });
         }
-    } catch(error) {
+    } catch (error) {
         res.status(error?.status || 500).send(error?.message || error);
     }
 }
