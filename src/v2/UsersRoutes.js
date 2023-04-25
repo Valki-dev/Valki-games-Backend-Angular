@@ -9,9 +9,15 @@ router.post("/wishlist", userController.addToWishlist);
 
 //<<-------------------- GET -------------------->>
 router.get("/:id", userController.getUserById);
-router.get("/wishlist/:id", userController.getUserWishlist)
+router.get("/wishlist/:id", userController.getUserWishlist);
+router.get("/cart/:id", userController.getUserCart);
+router.get("/sales/:id", userController.getUserSales);
 
 //<<-------------------- UPDATE -------------------->>
 router.patch("/", userController.updateUser);
+
+//<<-------------------- DELETE -------------------->>
+//! Terminar método en el controlador
+router.delete("/wishlist", userController.deleteFromWishlist);
 
 module.exports = router;

@@ -7,7 +7,7 @@ const { Op } = require("sequelize");
 
 const getAllGames = async (req, res) => {
     try {
-        const videogames = await models.Videogame.findAll();
+        const videogames = await Videogame.findAll();
 
         if(videogames.length == 0) {
             res.status(404).send({message: 'Some error occurred while retrieving all videogames'});
@@ -28,7 +28,7 @@ const getGameById = async (req, res) => {
     }
 
     try {
-        const game = await models.Videogame.findByPk(id);
+        const game = await Videogame.findByPk(id);
 
         if(!game) {
             res.status(400).send({message: "Some error occurred while retrieving videogame"})
@@ -48,7 +48,7 @@ const getGameByName = async (req, res) => {
     }
 
     try {
-        const foundedGames = await models.Videogame.findAll({
+        const foundedGames = await Videogame.findAll({
             where: {
                 name: {
                     [Op.like]: `${name}%`
@@ -75,7 +75,7 @@ const updateStock = async (req, res) => {
         res.status(400).send({ status: "FAILED", data: { error: "One of the following keys is missing or is empty: 'id', ''amount" } });
     }
 
-    const game = await models.Videogame.findByPk(id);
+    const game = await Videogame.findByPk(id);
 
     if(!game) {
         res.status(404).send({ message: "Some error occurred while retrieving videogame"});
@@ -88,7 +88,7 @@ const updateStock = async (req, res) => {
     }
 
     try {
-        const updatedGame = await models.Videogame.update({ stock: totalAmount }, {
+        const updatedGame = await Videogame.update({ stock: totalAmount }, {
             where: {
                 id: id
             }

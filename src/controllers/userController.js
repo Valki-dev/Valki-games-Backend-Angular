@@ -4,6 +4,8 @@ const { v4: uuid } = require("uuid");
 const { Videogame } = require("../models/Videogame");
 const { User } = require("../models/User");
 const { Wishlist } = require("../models/Wishlist");
+const { Cart } = require("../models/Cart");
+const { Sale } = require("../models/Sale");
 
 //<<-------------------- POST -------------------->>
 const createUser = async (req, res) => {
@@ -175,6 +177,72 @@ const getUserWishlist = async (req, res) => {
     }
 }
 
+const getUserCart = async (req, res) => {
+    const { id } = req.params;
+
+    if(
+        !id ||
+        id.trim() == ""
+    ) {
+        res.status(400).send({ status: "FAILED", data: { error: "Key is missing or is empty: userId" } })
+    }
+
+    try {
+        const cartProducts = await Cart.findAll({
+            include: {
+                model: Videogame,
+                as: 'products',
+                required: true
+            },
+            where: {
+                userId: id
+            }
+        });
+
+        if(cartProducts) {
+            res.status(200).send(cartProducts);
+        } else {
+            res.status(404).send({ message: "Some error occurred while retrieving user's Cart"})
+        }
+
+    } catch(error) {
+        res.status(error?.status || 500).send(error?.message || error);
+    }
+}
+
+const getUserSales = async (req, res) => {
+    const { id } = req.params;
+
+    if(
+        !id ||
+        id.trim() == ""
+    ) {
+        res.status(400).send({ status: "FAILED", data: { error: "Key is missing or is empty: userId" }  })
+    }
+
+    try {
+        const salesProducts = await Sale.findAll({
+            include: {
+                model: Videogame,
+                as: 'products',
+                required: true
+            },
+            where: {
+                userId: id
+            }
+        });
+
+        if(salesProducts) {
+            res.status(200).send(salesProducts);
+        } else {
+            res.status(404).send({ message: "Some error occurred while retrieving user's sales" });
+        }
+
+    } catch(error) {
+        res.status(error?.status || 500).send(error?.message || error);
+    }
+}
+
 //<<-------------------- UPDATE -------------------->>
 
 const updateUser = async (req, res) => {
@@ -227,11 +295,19 @@ const updateUser = async (req, res) => {
     }
 }
 
+//<<-------------------- DELETE -------------------->>
+const deleteFromWishlist = async (req, res) => {
+
+}
+
 module.exports = {
     createUser,
     logIn,
     addToWishlist,
     getUserById,
     getUserWishlist,
-    updateUser
+    getUserCart,
+    getUserSales,
+    updateUser,
+    deleteFromWishlist
 }
