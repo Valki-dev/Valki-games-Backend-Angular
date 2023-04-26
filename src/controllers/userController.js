@@ -29,7 +29,7 @@ const createUser = async (req, res) => {
 
         if (!foundedUser) {
             password = bycript.hashSync(password, saltRounds);
-    
+
             const user = {
                 id: uuid(),
                 userName: userName,
@@ -39,25 +39,25 @@ const createUser = async (req, res) => {
                 subscriptionDate: new Date(),
                 isAdmin: false
             }
-    
+
             try {
                 const createdUser = await User.create(user);
-    
+
                 if (!createdUser) {
                     res.status(400).send({ message: "Some error occurred while creating user" });
                 }
-    
+
                 res.status(200).send(createdUser);
             } catch (error) {
                 res.status(error?.status || 500).send(error?.message || error);
             }
-    
+
         } else {
             res.status(400).send({ message: "That count already exists" });
         }
-    } catch(error) {
+    } catch (error) {
         res.status(error?.status || 500).send(error?.message || error);
-    }   
+    }
 
 }
 
@@ -107,25 +107,77 @@ const addToWishlist = async (req, res) => {
             }
         });
 
-        if(!foundedVideogame) {
-            
+        if (!foundedVideogame) {
+
             const videogame = {
                 userId: userId,
                 productId: productId
             }
 
-            const createdWishlistItem = await Wishlist.create(videogame);
+            try {
+                const createdWishlistItem = await Wishlist.create(videogame);
 
-            if (!createdWishlistItem) {
-                res.status(400).send({ message: "Some error occurred while adding to wishlist" });
+                if (!createdWishlistItem) {
+                    res.status(400).send({ message: "Some error occurred while adding to wishlist" });
+                }
+
+                res.status(200).send(createdWishlistItem);
+
+            } catch (error) {
+                res.status(error?.status || 500).send(error?.message || error);
             }
-
-            res.status(200).send(createdWishlistItem);
 
         } else {
             res.status(400).send({ message: "That videogame already exists in user's wishlist" });
         }
 
+    } catch (error) {
+        res.status(error?.status || 500).send(error?.message || error);
+    }
+}
+
+const addToCart = async (req, res) => {
+    const { body: { userId, productId } } = req;
+
+    if (
+        !userId ||
+        userId.trim() == "" ||
+        !productId ||
+        productId <= 0
+    ) {
+        res.status(400).send({ status: "FAILED", data: { error: "One of the following keys is missing or is empty: 'userId', 'productId'" } });
+    }
+
+    try {
+        const foundedVideogame = await Cart.findOne({
+            where: {
+                userId: userId,
+                productId: productId
+            }
+        });
+
+        if (!foundedVideogame) {
+
+            const videogame = {
+                userId: userId,
+                productId: productId,
+                amount: 1
+            }
+
+            try {
+                const createdCartItem = await Cart.create(videogame);
+
+                if (!createdCartItem) {
+                    res.status(400).send({ message: "Some error occurred while adding to cart" });
+                }
+
+                res.status(200).send(createdCartItem);
+            } catch (error) {
+                res.status(error?.status || 500).send(error?.message || error);
+            }
+        } else {
+            res.status(400).send({ message: "That videogame already exists in user's cart" });
+        }
     } catch (error) {
         res.status(error?.status || 500).send(error?.message || error);
     }
@@ -188,7 +240,7 @@ const getUserWishlist = async (req, res) => {
                 userId: id
             }
         })
-        
+
         if (wishlistProducts) {
             res.status(200).send(wishlistProducts);
         } else {
@@ -203,7 +255,7 @@ const getUserWishlist = async (req, res) => {
 const getUserCart = async (req, res) => {
     const { id } = req.params;
 
-    if(
+    if (
         !id ||
         id.trim() == ""
     ) {
@@ -222,13 +274,13 @@ const getUserCart = async (req, res) => {
             }
         });
 
-        if(cartProducts) {
+        if (cartProducts) {
             res.status(200).send(cartProducts);
         } else {
-            res.status(404).send({ message: "Some error occurred while retrieving user's Cart"})
+            res.status(404).send({ message: "Some error occurred while retrieving user's Cart" })
         }
 
-    } catch(error) {
+    } catch (error) {
         res.status(error?.status || 500).send(error?.message || error);
     }
 }
@@ -236,11 +288,11 @@ const getUserCart = async (req, res) => {
 const getUserSales = async (req, res) => {
     const { id } = req.params;
 
-    if(
+    if (
         !id ||
         id.trim() == ""
     ) {
-        res.status(400).send({ status: "FAILED", data: { error: "Key is missing or is empty: userId" }  })
+        res.status(400).send({ status: "FAILED", data: { error: "Key is missing or is empty: userId" } })
     }
 
     try {
@@ -255,13 +307,13 @@ const getUserSales = async (req, res) => {
             }
         });
 
-        if(salesProducts) {
+        if (salesProducts) {
             res.status(200).send(salesProducts);
         } else {
             res.status(404).send({ message: "Some error occurred while retrieving user's sales" });
         }
 
-    } catch(error) {
+    } catch (error) {
         res.status(error?.status || 500).send(error?.message || error);
     }
 }
@@ -320,13 +372,42 @@ const updateUser = async (req, res) => {
 
 //<<-------------------- DELETE -------------------->>
 const deleteFromWishlist = async (req, res) => {
+    const { params: { userId }, query: { productId } } = req;
 
+    if (
+        !userId ||
+        userId.trim() == "" ||
+        !productId ||
+        productId <= 0
+    ) {
+        res.status(400).send({ status: "FAILED", data: { error: "One of the following keys is missing or is empty: 'userId', 'productId'" } });
+    }
+
+    try {
+        const deletedVideogame = await Wishlist.destroy({
+            where: {
+                userId: userId,
+                productId: productId
+            }
+        });
+
+        console.log(deletedVideogame);
+
+        if (deletedVideogame === 0) {
+            res.status(500).send({ message: "Some error occurred while deleting videogame" })
+        }
+
+        res.status(200).send({ status: "OK" });
+    } catch (error) {
+        res.status(error?.status || 500).send(error?.message || error);
+    }
 }
 
 module.exports = {
     createUser,
     logIn,
     addToWishlist,
+    addToCart,
     getUserById,
     getUserWishlist,
     getUserCart,

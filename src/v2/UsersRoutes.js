@@ -6,6 +6,7 @@ const userController = require("../controllers/userController");
 router.post("/", userController.createUser);
 router.post("/login", userController.logIn);
 router.post("/wishlist", userController.addToWishlist);
+router.post("/cart", userController.addToCart)
 
 //<<-------------------- GET -------------------->>
 router.get("/:id", userController.getUserById);
@@ -17,7 +18,6 @@ router.get("/sales/:id", userController.getUserSales);
 router.patch("/", userController.updateUser);
 
 //<<-------------------- DELETE -------------------->>
-//! Terminar método en el controlador
-router.delete("/wishlist", userController.deleteFromWishlist);
+router.delete("/wishlist/:userId", userController.deleteFromWishlist);
 
 module.exports = router;
