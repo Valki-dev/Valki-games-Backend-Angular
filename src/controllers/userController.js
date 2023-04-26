@@ -24,36 +24,40 @@ const createUser = async (req, res) => {
         res.status(400).send({ status: "FAILED", data: { error: "One of the following keys is missing or is empty in request body: 'userName', 'email', 'password', 'phoneNumber'" } });
     }
 
-    const foundedUser = await getUserByEmail(email);
+    try {
+        const foundedUser = await getUserByEmail(email);
 
-    if (!foundedUser) {
-        password = bycript.hashSync(password, saltRounds);
-
-        const user = {
-            id: uuid(),
-            userName: userName,
-            email: email,
-            password: password,
-            phoneNumber: phoneNumber,
-            subscriptionDate: new Date(),
-            isAdmin: false
-        }
-
-        try {
-            const createdUser = await User.create(user);
-
-            if (!createdUser) {
-                res.status(400).send({ message: "Some error occurred while creating user" });
+        if (!foundedUser) {
+            password = bycript.hashSync(password, saltRounds);
+    
+            const user = {
+                id: uuid(),
+                userName: userName,
+                email: email,
+                password: password,
+                phoneNumber: phoneNumber,
+                subscriptionDate: new Date(),
+                isAdmin: false
             }
-
-            res.status(200).send(createdUser);
-        } catch (error) {
-            res.status(error?.status || 500).send(error?.message || error);
+    
+            try {
+                const createdUser = await User.create(user);
+    
+                if (!createdUser) {
+                    res.status(400).send({ message: "Some error occurred while creating user" });
+                }
+    
+                res.status(200).send(createdUser);
+            } catch (error) {
+                res.status(error?.status || 500).send(error?.message || error);
+            }
+    
+        } else {
+            res.status(400).send({ message: "That count already exists" });
         }
-
-    } else {
-        res.status(400).send({ message: "That count already exists" });
-    }
+    } catch(error) {
+        res.status(error?.status || 500).send(error?.message || error);
+    }   
 
 }
 
@@ -90,19 +94,38 @@ const addToWishlist = async (req, res) => {
         !userId ||
         userId.trim() == "" ||
         !productId ||
-        productId.trim() == ""
+        productId <= 0
     ) {
         res.status(400).send({ status: "FAILED", data: { error: "One of the following keys is missing or is empty: 'userId', 'productId'" } });
     }
 
     try {
-        const wishlist = await Wishlist.findAll({
+        const foundedVideogame = await Wishlist.findOne({
             where: {
-                userId: userId
+                userId: userId,
+                productId: productId
             }
-        })
+        });
 
-        console.log(wishlist);
+        if(!foundedVideogame) {
+            
+            const videogame = {
+                userId: userId,
+                productId: productId
+            }
+
+            const createdWishlistItem = await Wishlist.create(videogame);
+
+            if (!createdWishlistItem) {
+                res.status(400).send({ message: "Some error occurred while adding to wishlist" });
+            }
+
+            res.status(200).send(createdWishlistItem);
+
+        } else {
+            res.status(400).send({ message: "That videogame already exists in user's wishlist" });
+        }
+
     } catch (error) {
         res.status(error?.status || 500).send(error?.message || error);
     }
