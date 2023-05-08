@@ -13,7 +13,7 @@ const sequelize = new Sequelize({
 
 async function connection() {
     try {
-        await sequelize.sync();
+        await sequelize.sync({ alter: true });
         console.log('Connection has been established successfully');
     } catch(error) {
         console.log('Unable to connect to the database: ', error);

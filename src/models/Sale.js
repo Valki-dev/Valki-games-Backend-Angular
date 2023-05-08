@@ -13,7 +13,14 @@ const Sale = sequelize.define("Sale", {
         primaryKey: true
     },
     saleDate: {
-        type: DataTypes.DATE
+        type: DataTypes.DATEONLY,
+        defaulValiue: DataTypes.NOW,
+    },
+    amount: {
+        type: DataTypes.INTEGER,
+    },
+    price: {
+        type: DataTypes.FLOAT
     }
 }, {
     tableName: "sales",
