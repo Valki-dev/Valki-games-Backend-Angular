@@ -33,6 +33,9 @@ const Videogame = sequelize.define("Videogame", {
     price: {
         type: DataTypes.FLOAT
     },
+    onOfferPrice: {
+        type: DataTypes.FLOAT
+    },
     available: {
         type: DataTypes.BOOLEAN,
         defaultValue: true

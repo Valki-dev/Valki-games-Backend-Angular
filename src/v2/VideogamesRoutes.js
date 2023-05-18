@@ -8,6 +8,9 @@ router.get("/", gameController.getAllGames);
 router.get("/:id", gameController.getGameById);
 router.get("/search/:name", gameController.getGameByName);
 //<<-------------------- UPDATE -------------------->>
-router.patch("/", gameController.updateStock);
+router.patch("/", gameController.updateGame)
+router.patch("/stock", gameController.updateStock);
 //<<-------------------- DELETE -------------------->>
+router.delete("/:id", gameController.deleteGame)
+
 module.exports = router;

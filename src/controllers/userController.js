@@ -361,11 +361,40 @@ const getUserSales = async (req, res) => {
     }
 }
 
+const comparePassword = async (req, res) => {
+    const { body: { id, currentPassword } } = req;
+
+    if(
+        !id ||
+        id.trim() == "" ||
+        !currentPassword ||
+        currentPassword.trim() == ""
+    ) {
+        res.status(400).send({ error: "FAILED", data: { error: "One of the following keys is missing or is empty: 'id', 'currentPassword'" } });
+    }
+
+    try {
+        const user = await User.findByPk(id);
+
+        if(user) {
+            if (bycript.compareSync(currentPassword, user.password)) {
+                res.status(200).send({ message: true });
+            } else {
+                res.status(200).send({ message: false });
+            }
+        } else {
+            res.status(404).send({ message: "Some error occurred while retrieving user" });
+        }
+    } catch(error) {
+        res.status(error?.status || 500).send(error?.message || error);
+    }
+}
+
 //<<-------------------- UPDATE -------------------->>
 
 //TODO Comprobar que este método funciona
 const updateUser = async (req, res) => {
-    const { body: { userId, userName, email, password, phoneNumber, subscriptionDate } } = req;
+    const { body: { userId, userName, email, phoneNumber, subscriptionDate } } = req;
 
     if (
         !userId ||
@@ -374,27 +403,24 @@ const updateUser = async (req, res) => {
         userName.trim() == "" ||
         !email ||
         email.trim() == "" ||
-        !password ||
-        password.trim() == "" ||
         !phoneNumber ||
         phoneNumber.trim() == "" ||
         !subscriptionDate ||
         subscriptionDate.trim() == ""
     ) {
-        res.status(400).send({ status: "FAILED", data: { error: "One of the following keys is missing or is empty: 'userId', 'userName', 'email', 'password', 'phoneNumber', 'subscriptionDate'" } });
+        res.status(400).send({ status: "FAILED", data: { error: "One of the following keys is missing or is empty: 'userId', 'userName', 'email', 'phoneNumber', 'subscriptionDate'" } });
     }
 
     try {
         const user = await User.findByPk(userId);
 
         if (user) {
-            const hashedPassword = bycript.hashSync(password, saltRounds);
+            // const hashedPassword = bycript.hashSync(password, saltRounds);
 
             try {
                 const updatedUser = await User.update({
                     userName: userName,
                     email: email,
-                    password: hashedPassword,
                     phoneNumber: phoneNumber,
                 }, {
                     where: {
@@ -470,7 +496,69 @@ const updateAmount = async (req, res) => {
     }
 }
 
+const updatePassword = async (req, res) => {
+    const { body: { id, newPassword } } = req;
+
+    if(
+        !id ||
+        id.trim() == "" ||
+        !newPassword ||
+        newPassword.trim() == ""
+    ) {
+        res.status(400).send({ error: "FAILED", data: { error: "One of the following keys is missing or is empty: 'id', 'newPassword'" } });
+    }
+    //! TERMINAR
+
+    try {
+        const encryptedPassword = bycript.hashSync(newPassword, saltRounds);
+
+        const updatedPassword = await User.update({
+            password: encryptedPassword,
+        }, {
+            where: {
+                id: id
+            }
+        });
+
+        if(updatedPassword === 0) {
+            res.status(500).send({ message: "Some error occurred while updating videogame's amount" });
+        } else {
+            res.status(200).send({status: "OK"});
+        }
+    } catch(error) {
+        res.status(error?.status || 500).send(error?.message || error);
+    }
+}
+
 //<<-------------------- DELETE -------------------->>
+const deleteUser = async (req, res) => {
+    const { id } = req.params;
+
+    if(
+        !id ||
+        id.trim() == ""
+    ) {
+        res.status(400).send({ status: "FAILED", data: { error: "Key is missing or is empty: 'id'" } });
+    }
+
+    try {
+        const deletedUser = await User.destroy({
+            where: {
+                id: id
+            }
+        });
+
+        if(deletedUser === 0) {
+            res.status(500).send({ message: "Some error occurred while deleting user" })
+        }
+
+        res.status(200).send({ status: "OK" });
+    } catch(error) {
+        res.status(error?.status || 500).send(error?.message || error);
+    }
+}
+
+
 const deleteFromWishlist = async (req, res) => {
     const { params: { userId }, query: { productId } } = req;
 
@@ -490,8 +578,6 @@ const deleteFromWishlist = async (req, res) => {
                 productId: productId
             }
         });
-
-        console.log(deletedVideogame);
 
         if (deletedVideogame === 0) {
             res.status(500).send({ message: "Some error occurred while deleting videogame from user's wishlist" })
@@ -542,8 +628,11 @@ module.exports = {
     getUserWishlist,
     getUserCart,
     getUserSales,
+    comparePassword,
     updateUser,
     updateAmount,
+    updatePassword,
+    deleteUser,
     deleteFromWishlist,
     deleteFromCart
 }
