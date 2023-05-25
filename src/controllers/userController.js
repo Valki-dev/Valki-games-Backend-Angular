@@ -203,7 +203,7 @@ const addToSales = async (req, res) => {
     const sale = {
         userId: userId,
         productId: productId,
-        saleDate: '2023-05-05 12:00:45',
+        saleDate: new Date(),
         amount: amount,
         price: price
     }
@@ -362,6 +362,7 @@ const getUserSales = async (req, res) => {
 }
 
 const comparePassword = async (req, res) => {
+
     const { body: { id, currentPassword } } = req;
 
     if(
@@ -497,20 +498,20 @@ const updateAmount = async (req, res) => {
 }
 
 const updatePassword = async (req, res) => {
-    const { body: { id, newPassword } } = req;
+    const { body: { id, password } } = req;
 
     if(
         !id ||
         id.trim() == "" ||
-        !newPassword ||
-        newPassword.trim() == ""
+        !password ||
+        password.trim() == ""
     ) {
-        res.status(400).send({ error: "FAILED", data: { error: "One of the following keys is missing or is empty: 'id', 'newPassword'" } });
+        res.status(400).send({ error: "FAILED", data: { error: "One of the following keys is missing or is empty: 'id', 'password'" } });
     }
     //! TERMINAR
 
     try {
-        const encryptedPassword = bycript.hashSync(newPassword, saltRounds);
+        const encryptedPassword = bycript.hashSync(password, saltRounds);
 
         const updatedPassword = await User.update({
             password: encryptedPassword,
