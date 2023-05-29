@@ -1,10 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const gameController = require("../controllers/gameController");
+const fileController = require("../controllers/fileController");
+const { upload } = require("../config/multer.config")
 
 //<<-------------------- POST -------------------->>
+router.post("/", upload.single("file"), fileController.fileUpload)
+
 //<<-------------------- GET -------------------->>
 router.get("/", gameController.getAllGames);
+router.get("/ranking", gameController.getGamesRanking )
 router.get("/:id", gameController.getGameById);
 router.get("/search/:name", gameController.getGameByName);
 //<<-------------------- UPDATE -------------------->>

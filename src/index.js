@@ -16,5 +16,6 @@ initRouterController(app);
 connection();
 
 app.listen(PORT, () => {
+    console.log(__dirname);
     console.log(`Servidor activo en el puerto ${PORT}`);
 })

@@ -1,5 +1,6 @@
-const { models } = require("../database/connection");
+const { models, sequelize } = require("../database/connection");
 const { Videogame } = require("../models/Videogame");
+const { Sale } = require("../models/Sale")
 
 const { Op } = require("sequelize");
 
@@ -32,9 +33,10 @@ const getGameById = async (req, res) => {
 
         if (!game) {
             res.status(400).send({ message: "Some error occurred while retrieving videogame" })
+        } else {
+            res.status(200).send(game);
         }
 
-        res.status(200).send(game);
     } catch (error) {
         res.status(error?.status || 500).send(error?.message || error);
     }
@@ -57,11 +59,28 @@ const getGameByName = async (req, res) => {
         });
 
         if (foundedGames.length == 0) {
-            res.status(404).send({ message: "Some error occurred while retrieving videogames" });
+            res.send([]);
+        } else {
+            res.status(200).send(foundedGames);
         }
 
-        res.status(200).send(foundedGames);
     } catch (error) {
+        res.status(error?.status || 500).send(error?.message || error);
+    }
+}
+
+const getGamesRanking = async (req, res) => {
+    try {   
+        const [results, metadata] = await sequelize.query("SELECT S.productId, COUNT(S.productId) as 'totalVentas', P.* FROM sales S JOIN products P ON S.productId = P.id GROUP BY productId ORDER BY COUNT(S.productId) DESC LIMIT 5");
+
+        // res.status(200).send(results)
+
+        if(results.length > 0) {
+            res.status(200).send(results);
+        } else {
+            res.status(500).send({message: "Some error occurred while retrieving games'ranking"});
+        }
+    } catch(error) {
         res.status(error?.status || 500).send(error?.message || error);
     }
 }
@@ -86,8 +105,9 @@ const updateStock = async (req, res) => {
         if (game) {
             const totalAmount = (game.stock - amount);
 
-            if (totalAmount < 0) {
+            if (totalAmount <= 0) {
                 res.status(400).send({ message: "Some error occurred while updating the videogame amount" });
+                return;
             }
 
             try {
@@ -114,7 +134,6 @@ const updateStock = async (req, res) => {
     }
 }
 
-//! SIN TERMINAR
 const updateGame = async (req, res) => {
     const { id, stock, price, onOffer, isNew } = req.body;
 
@@ -136,12 +155,21 @@ const updateGame = async (req, res) => {
 
         if(foundedVideogame) {
             try {
-                let onOfferPrice = (price  - (price * (onOffer / 100))).toFixed(2);
+                let onOfferPrice = 0;
+                let isOnOffer = false;
+
+                if(onOffer > 0) {
+                    onOfferPrice = (price  - (price * (onOffer / 100))).toFixed(2);
+                    isOnOffer = true;
+                } else {
+                    onOfferPrice = 0;
+                }
 
                 const updatedVideogame = await Videogame.update({
                     stock: stock,
                     price: price,
                     onOfferPrice: onOfferPrice,
+                    onOffer: isOnOffer,
                     isNew: isNew
                 }, {
                     where: {
@@ -200,6 +228,7 @@ module.exports = {
     getAllGames,
     getGameById,
     getGameByName,
+    getGamesRanking,
     updateStock,
     updateGame,
     deleteGame

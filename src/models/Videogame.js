@@ -6,7 +6,8 @@ const Videogame = sequelize.define("Videogame", {
     id: {
         type: DataTypes.INTEGER,
         allowNull: false,
-        primaryKey: true
+        primaryKey: true,
+        autoIncrement: true
     },
     name: {
         type: DataTypes.TEXT
@@ -34,7 +35,8 @@ const Videogame = sequelize.define("Videogame", {
         type: DataTypes.FLOAT
     },
     onOfferPrice: {
-        type: DataTypes.FLOAT
+        type: DataTypes.FLOAT,
+        allowNull: true
     },
     available: {
         type: DataTypes.BOOLEAN,
