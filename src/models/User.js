@@ -25,6 +25,12 @@ const User = sequelize.define("users", {
     },
     isAdmin: {
         type: DataTypes.BOOLEAN
+    },
+    token: {
+        type: DataTypes.STRING
+    },
+    isVerified: {
+        type: DataTypes.BOOLEAN
     }
 }, {
     tableName: 'users',

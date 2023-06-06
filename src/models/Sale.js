@@ -25,11 +25,17 @@ const Sale = sequelize.define("Sale", {
     saleDate: {
         type: DataTypes.DATE
     },
+    orderNumber: {
+        type: DataTypes.STRING
+    },
     amount: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.INTEGER
     },
     price: {
         type: DataTypes.FLOAT
+    },
+    downloadCode: {
+        type: DataTypes.STRING
     }
 }, {
     tableName: "sales",

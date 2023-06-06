@@ -7,10 +7,15 @@ const { Wishlist } = require("../models/Wishlist");
 const { Cart } = require("../models/Cart");
 const { Sale } = require("../models/Sale");
 const { use } = require("../v2/UsersRoutes");
+const nodemailer = require("nodemailer");
+const {sendEmailTemplate} = require("../email/emailTemplate");
+const stripe = require('stripe')('sk_test_51NExalGtd86gxW1pp9VdL0hECbOd7rf9kCSJZehkz3O2FYhPzx5iTOyCb7DdTdXTSvG4qZkvOHrnfFIF9f7hDVfx00z18V9xpE')
+
+
 
 //<<-------------------- POST -------------------->>
 const createUser = async (req, res) => {
-    let { body: { userName, email, password, phoneNumber } } = req;
+    let { body: { userName, email, password, phoneNumber, isVerified } } = req;
 
     if (
         !userName ||
@@ -31,6 +36,8 @@ const createUser = async (req, res) => {
         if (!foundedUser) {
             password = bycript.hashSync(password, saltRounds);
 
+            const token = uuid();
+
             const user = {
                 id: uuid(),
                 userName: userName,
@@ -38,7 +45,9 @@ const createUser = async (req, res) => {
                 password: password,
                 phoneNumber: phoneNumber,
                 subscriptionDate: new Date(),
-                isAdmin: false
+                isAdmin: false,
+                token: bycript.hashSync(token, saltRounds),
+                isVerified: isVerified
             }
 
             try {
@@ -48,6 +57,8 @@ const createUser = async (req, res) => {
                     res.status(400).send({ message: "Some error occurred while creating user" });
                 }
 
+                
+                sendEmail(user.email, token);
                 res.status(200).send(createdUser);
             } catch (error) {
                 res.status(error?.status || 500).send(error?.message || error);
@@ -59,7 +70,6 @@ const createUser = async (req, res) => {
     } catch (error) {
         res.status(error?.status || 500).send(error?.message || error);
     }
-
 }
 
 const logIn = async (req, res) => {
@@ -187,9 +197,9 @@ const addToCart = async (req, res) => {
 const addToSales = async (req, res) => {
     const { body: { userId, productId, amount, price } } = req;
 
-    if(
+    if (
         !userId ||
-        userId.trim() == ""||  
+        userId.trim() == "" ||
         !productId ||
         productId <= 0 ||
         !amount ||
@@ -200,12 +210,16 @@ const addToSales = async (req, res) => {
         res.status(400).send({ status: "FAILED", data: { error: "One of the following keys is missing or is empty: 'userId', 'productId', 'amount', 'price'" } });
     }
 
+    const orderNumber = uuid().split("-").join("");
+
     const sale = {
         userId: userId,
         productId: productId,
         saleDate: new Date(),
+        orderNumber: orderNumber,
         amount: amount,
-        price: price
+        price: price,
+        downloadCode: uuid()
     }
 
     console.log(sale);
@@ -213,16 +227,49 @@ const addToSales = async (req, res) => {
     try {
         const createdSale = await Sale.create(sale);
         console.log(createdSale);
-        if(!createdSale) {
-            res.status(400).send({message: "Some error occurred while creating sale"});
+        if (!createdSale) {
+            res.status(400).send({ message: "Some error occurred while creating sale" });
         } else {
             res.status(200).send(createdSale);
         }
 
-    } catch(error) {
+    } catch (error) {
         res.status(error?.status || 500).send(error?.message || error);
     }
 
+}
+
+const payment = async (req, res) => {
+    const { body: { stripeToken, amount } } = req;
+
+    if(
+        !stripeToken ||
+        stripeToken.trim() === "" ||
+        !amount ||
+        amount <= 0
+    ) {
+        res.status(400).send({ status: "FAILED", data: { error: "One of the following keys is missing or is empty: 'stripeToken', 'amount'" } });
+    }
+
+    const amountInEur = Math.round(amount * 100);
+
+    const charge = await stripe.charges.create({
+        amount: amountInEur,
+        currency: 'eur',
+        source: stripeToken,
+        capture: false,
+        description: 'Realizando pago',
+        receipt_email: 'flavio.oriap@gmail.com'
+    });
+
+    try {
+        await stripe.charges.capture(charge.id);
+        res.json(charge);
+    } catch(error) {
+        await stripe.refunds.create({ charge: charge.id }); 
+        res.status(400).send(charge)
+    }
+    
     
 }
 
@@ -365,7 +412,7 @@ const comparePassword = async (req, res) => {
 
     const { body: { id, currentPassword } } = req;
 
-    if(
+    if (
         !id ||
         id.trim() == "" ||
         !currentPassword ||
@@ -377,7 +424,7 @@ const comparePassword = async (req, res) => {
     try {
         const user = await User.findByPk(id);
 
-        if(user) {
+        if (user) {
             if (bycript.compareSync(currentPassword, user.password)) {
                 res.status(200).send({ message: true });
             } else {
@@ -386,6 +433,39 @@ const comparePassword = async (req, res) => {
         } else {
             res.status(404).send({ message: "Some error occurred while retrieving user" });
         }
+    } catch (error) {
+        res.status(error?.status || 500).send(error?.message || error);
+    }
+}
+
+const getSaleByOrderNumber = async (req,res) => {
+    const { orderNumber } = req.params;
+
+    if(
+        !orderNumber ||
+        orderNumber.trim() === ""
+    ) {
+        res.status(400).send({ status: "FAILED", data: { error: "Key is missing or is empty: 'orderNumber'" } });
+    }
+
+    try {
+        const foundedSale = await Sale.findOne({
+            include: {
+                model: Videogame,
+                as: 'products',
+                required: true
+            },
+            where: {
+                orderNumber: orderNumber
+            }
+        });
+
+        if(foundedSale) {
+            res.status(200).send(foundedSale);
+        } else {
+            res.status(404).send({message: "Some error occurred while retrieving sale"});
+        }
+
     } catch(error) {
         res.status(error?.status || 500).send(error?.message || error);
     }
@@ -428,14 +508,14 @@ const updateUser = async (req, res) => {
                         id: userId
                     }
                 })
-    
+
                 if (updatedUser === 0) {
                     res.status(500).send({ message: "Some error occurred while updating user" });
                 } else {
-                    res.status(200).send({status: "OK"})
+                    res.status(200).send({ status: "OK" })
                 }
-    
-            } catch(error) {
+
+            } catch (error) {
                 res.status(error?.status || 500).send(error?.message || error);
             }
         } else {
@@ -449,7 +529,7 @@ const updateUser = async (req, res) => {
 const updateAmount = async (req, res) => {
     const { body: { userId, productId, amount } } = req;
 
-    if(
+    if (
         !userId ||
         userId.trim() == "" ||
         !productId ||
@@ -468,7 +548,7 @@ const updateAmount = async (req, res) => {
             }
         });
 
-        if(videogame) {
+        if (videogame) {
             try {
                 const updatedVideogame = await Cart.update({
                     amount: amount
@@ -478,21 +558,21 @@ const updateAmount = async (req, res) => {
                         productId: productId
                     }
                 });
-    
-                if(updatedVideogame === 0) {
+
+                if (updatedVideogame === 0) {
                     res.status(500).send({ message: "Some error occurred while updating videogame's amount" });
                 } else {
                     res.status(200).send({ status: "OK" });
                 }
-    
-                
-            } catch(error) {
+
+
+            } catch (error) {
                 res.status(error?.status || 500).send(error?.message || error);
             }
         } else {
             res.status(500).send({ message: "Some error occurred while updating amount" });
         }
-    } catch(error) {
+    } catch (error) {
         res.status(error?.status || 500).send(error?.message || error);
     }
 }
@@ -500,7 +580,7 @@ const updateAmount = async (req, res) => {
 const updatePassword = async (req, res) => {
     const { body: { id, password } } = req;
 
-    if(
+    if (
         !id ||
         id.trim() == "" ||
         !password ||
@@ -508,7 +588,6 @@ const updatePassword = async (req, res) => {
     ) {
         res.status(400).send({ error: "FAILED", data: { error: "One of the following keys is missing or is empty: 'id', 'password'" } });
     }
-    //! TERMINAR
 
     try {
         const encryptedPassword = bycript.hashSync(password, saltRounds);
@@ -521,13 +600,59 @@ const updatePassword = async (req, res) => {
             }
         });
 
-        if(updatedPassword === 0) {
+        if (updatedPassword === 0) {
             res.status(500).send({ message: "Some error occurred while updating videogame's amount" });
         } else {
-            res.status(200).send({status: "OK"});
+            res.status(200).send({ status: "OK" });
         }
-    } catch(error) {
+    } catch (error) {
         res.status(error?.status || 500).send(error?.message || error);
+    }
+}
+
+const verifyAccount = async (req, res) => {
+    const { body: { email, token } } = req;
+
+    if(
+        !email ||
+        email.trim() === "" ||
+        !token ||
+        token.trim() === ""
+    ) {
+        res.status(400).send({ error: "FAILED", data: { error: "One of the following keys is missing or is empty: 'email', 'token'" } });
+    }
+
+    try {
+        const foundedUser = await getUserByEmail(email);
+
+        if(foundedUser) {
+            if (bycript.compareSync(token, foundedUser.token)) {
+                try {
+                    const updatedVerification = await User.update({
+                        isVerified: true
+                    }, {
+                        where: {
+                            id: foundedUser.id
+                        }
+                    });
+
+                    if (updatedVerification === 0) {
+                        res.status(500).send({ message: "Some error occurred while verifying account" });
+                    } else {
+                        res.status(200).send({ status: "OK", id: foundedUser.id });
+                    }
+                } catch(error) {
+                    res.status(500)
+                }
+            } else {
+                res.status(400).send({message: "Some error occurred while verifying account"})
+            }
+        } else {
+            res.status(404).send({message: "Some error occurred while verifying account"})
+        }
+
+    } catch(error) {
+        res.status(500 || error?.status).send(error?.message || error);
     }
 }
 
@@ -535,7 +660,7 @@ const updatePassword = async (req, res) => {
 const deleteUser = async (req, res) => {
     const { id } = req.params;
 
-    if(
+    if (
         !id ||
         id.trim() == ""
     ) {
@@ -549,12 +674,12 @@ const deleteUser = async (req, res) => {
             }
         });
 
-        if(deletedUser === 0) {
+        if (deletedUser === 0) {
             res.status(500).send({ message: "Some error occurred while deleting user" })
         }
 
         res.status(200).send({ status: "OK" });
-    } catch(error) {
+    } catch (error) {
         res.status(error?.status || 500).send(error?.message || error);
     }
 }
@@ -591,15 +716,15 @@ const deleteFromWishlist = async (req, res) => {
 }
 
 const deleteFromCart = async (req, res) => {
-    const { params: {userId}, query: { productId } } = req;
+    const { params: { userId }, query: { productId } } = req;
 
-    if(
+    if (
         !userId ||
         userId.trim() == "" ||
         !productId ||
         productId <= 0
     ) {
-        res.status("400").send({ status: "FAILED", data:{ error: "One of the following keys is missing or is empty: 'userId', 'productId'" } })
+        res.status("400").send({ status: "FAILED", data: { error: "One of the following keys is missing or is empty: 'userId', 'productId'" } })
     }
 
     try {
@@ -610,13 +735,41 @@ const deleteFromCart = async (req, res) => {
             }
         });
 
-        if(deletedVideogame === 0) {
+        if (deletedVideogame === 0) {
             res.status(500).send({ message: "Some error occurred while deleting videogame from user's Cart" })
         }
         res.status(200).send({ status: "OK" });
-    } catch(error) {
+    } catch (error) {
         res.status(error?.status || 500).send(error?.message || error);
     }
+}
+
+//<<--------------------------------------------------->>
+
+const sendEmail = async (email, token) => {
+    const hostName = "smtp-relay.sendinblue.com";
+    const contactEmail = "valki.dev@gmail.com";
+    const password = "EBZDpNvfYhIR4j6x";
+
+    let transporter = nodemailer.createTransport({
+        host: hostName,
+        port: 587,
+        secure: false, // true for 465, false for other ports
+        auth: {
+            user: contactEmail, // generated ethereal user
+            pass: password, // generated ethereal password
+        },
+    });
+
+    let info = await transporter.sendMail({
+        from: '"Valki 👾" <valki.dev@gmail.com>', // sender address
+        to: email, // list of receivers
+        subject: "Verifica tu cuenta", // Subject line
+        text: "Hello world?", // plain text body
+        html: sendEmailTemplate(token), // html body
+    });
+
+    console.log(info.response);
 }
 
 module.exports = {
@@ -625,14 +778,17 @@ module.exports = {
     addToWishlist,
     addToCart,
     addToSales,
+    payment,
     getUserById,
     getUserWishlist,
     getUserCart,
     getUserSales,
+    getSaleByOrderNumber,
     comparePassword,
     updateUser,
     updateAmount,
     updatePassword,
+    verifyAccount,
     deleteUser,
     deleteFromWishlist,
     deleteFromCart
