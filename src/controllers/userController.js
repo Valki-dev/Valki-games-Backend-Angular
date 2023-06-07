@@ -220,7 +220,7 @@ const addToSales = async (req, res) => {
         orderNumber: orderNumber,
         amount: amount,
         price: price,
-        downloadCode: uuid()
+        downloadCode: uuid().toUpperCase()
     }
 
     console.log(sale);
@@ -415,7 +415,10 @@ const getUserSales = async (req, res) => {
             },
             where: {
                 userId: id
-            }
+            },
+            order: [
+                ['saleDate', 'DESC']
+            ]
         });
 
         if (salesProducts) {

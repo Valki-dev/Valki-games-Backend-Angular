@@ -24,7 +24,7 @@ const fileUpload = (req, res) => {
     .on('data', (chunk) => {
       videogames.push(chunk);
     })
-    .on('end', async () => {ç
+    .on('end', async () => {
       videogames = [...videogames];
       console.log(videogames);
       await Videogame.bulkCreate(videogames);
