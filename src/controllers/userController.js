@@ -8,9 +8,8 @@ const { Cart } = require("../models/Cart");
 const { Sale } = require("../models/Sale");
 const { use } = require("../v2/UsersRoutes");
 const nodemailer = require("nodemailer");
-const {sendEmailTemplate} = require("../email/emailTemplate");
-const stripe = require('stripe')('sk_test_51NExalGtd86gxW1pp9VdL0hECbOd7rf9kCSJZehkz3O2FYhPzx5iTOyCb7DdTdXTSvG4qZkvOHrnfFIF9f7hDVfx00z18V9xpE')
-
+const { sendRegisterEmailTemplate, sendSaleEmailTemplate } = require("../email/emailTemplate");
+const stripe = require('stripe')('sk_test_51NExalGtd86gxW1pp9VdL0hECbOd7rf9kCSJZehkz3O2FYhPzx5iTOyCb7DdTdXTSvG4qZkvOHrnfFIF9f7hDVfx00z18V9xpE');
 
 
 //<<-------------------- POST -------------------->>
@@ -57,8 +56,8 @@ const createUser = async (req, res) => {
                     res.status(400).send({ message: "Some error occurred while creating user" });
                 }
 
-                
-                sendEmail(user.email, token);
+
+                sendRegisterEmail(user.email, token);
                 res.status(200).send(createdUser);
             } catch (error) {
                 res.status(error?.status || 500).send(error?.message || error);
@@ -195,11 +194,13 @@ const addToCart = async (req, res) => {
 }
 
 const addToSales = async (req, res) => {
-    const { body: { userId, productId, amount, price } } = req;
+    const { body: { userId, email, productId, amount, price } } = req;
 
     if (
         !userId ||
         userId.trim() == "" ||
+        !email ||
+        email.trim() == "" ||
         !productId ||
         productId <= 0 ||
         !amount ||
@@ -207,7 +208,7 @@ const addToSales = async (req, res) => {
         !price ||
         price <= 0
     ) {
-        res.status(400).send({ status: "FAILED", data: { error: "One of the following keys is missing or is empty: 'userId', 'productId', 'amount', 'price'" } });
+        res.status(400).send({ status: "FAILED", data: { error: "One of the following keys is missing or is empty: 'userId', 'email', 'productId', 'amount', 'price'" } });
     }
 
     const orderNumber = uuid().split("-").join("");
@@ -230,7 +231,19 @@ const addToSales = async (req, res) => {
         if (!createdSale) {
             res.status(400).send({ message: "Some error occurred while creating sale" });
         } else {
-            res.status(200).send(createdSale);
+
+            try {
+                const foundedGame = await Videogame.findByPk(productId);
+
+                if (foundedGame) {
+
+                    const roundedPrice = price.toFixed(2) 
+                    sendSaleEmail(email, orderNumber, foundedGame.name, roundedPrice)
+                    res.status(200).send(createdSale);
+                }
+            } catch (error) {
+                res.status(error?.status || 500).send(error?.message || error);
+            }
         }
 
     } catch (error) {
@@ -242,7 +255,7 @@ const addToSales = async (req, res) => {
 const payment = async (req, res) => {
     const { body: { stripeToken, amount } } = req;
 
-    if(
+    if (
         !stripeToken ||
         stripeToken.trim() === "" ||
         !amount ||
@@ -253,24 +266,32 @@ const payment = async (req, res) => {
 
     const amountInEur = Math.round(amount * 100);
 
-    const charge = await stripe.charges.create({
-        amount: amountInEur,
-        currency: 'eur',
-        source: stripeToken,
-        capture: false,
-        description: 'Realizando pago',
-        receipt_email: 'flavio.oriap@gmail.com'
-    });
-
     try {
-        await stripe.charges.capture(charge.id);
-        res.json(charge);
+        const charge = await stripe.charges.create({
+            amount: amountInEur,
+            currency: 'eur',
+            source: stripeToken,
+            capture: false,
+            description: 'Realizando pago',
+            receipt_email: 'flavio.oriap@gmail.com'
+        });
+
+        try {
+            await stripe.charges.capture(charge.id);
+            res.json(charge);
+        } catch (error) {
+            await stripe.refunds.create({ charge: charge.id });
+            res.status(400).send(charge)
+        }
     } catch(error) {
-        await stripe.refunds.create({ charge: charge.id }); 
-        res.status(400).send(charge)
+        res.status(400).send(error?.message || error);
+        return;
     }
     
+
     
+
+
 }
 
 //<<-------------------- GET -------------------->>
@@ -438,10 +459,10 @@ const comparePassword = async (req, res) => {
     }
 }
 
-const getSaleByOrderNumber = async (req,res) => {
+const getSaleByOrderNumber = async (req, res) => {
     const { orderNumber } = req.params;
 
-    if(
+    if (
         !orderNumber ||
         orderNumber.trim() === ""
     ) {
@@ -460,13 +481,13 @@ const getSaleByOrderNumber = async (req,res) => {
             }
         });
 
-        if(foundedSale) {
+        if (foundedSale) {
             res.status(200).send(foundedSale);
         } else {
-            res.status(404).send({message: "Some error occurred while retrieving sale"});
+            res.status(404).send({ message: "Some error occurred while retrieving sale" });
         }
 
-    } catch(error) {
+    } catch (error) {
         res.status(error?.status || 500).send(error?.message || error);
     }
 }
@@ -613,7 +634,7 @@ const updatePassword = async (req, res) => {
 const verifyAccount = async (req, res) => {
     const { body: { email, token } } = req;
 
-    if(
+    if (
         !email ||
         email.trim() === "" ||
         !token ||
@@ -625,7 +646,7 @@ const verifyAccount = async (req, res) => {
     try {
         const foundedUser = await getUserByEmail(email);
 
-        if(foundedUser) {
+        if (foundedUser) {
             if (bycript.compareSync(token, foundedUser.token)) {
                 try {
                     const updatedVerification = await User.update({
@@ -641,17 +662,17 @@ const verifyAccount = async (req, res) => {
                     } else {
                         res.status(200).send({ status: "OK", id: foundedUser.id });
                     }
-                } catch(error) {
+                } catch (error) {
                     res.status(500)
                 }
             } else {
-                res.status(400).send({message: "Some error occurred while verifying account"})
+                res.status(400).send({ message: "Some error occurred while verifying account" })
             }
         } else {
-            res.status(404).send({message: "Some error occurred while verifying account"})
+            res.status(404).send({ message: "Some error occurred while verifying account" })
         }
 
-    } catch(error) {
+    } catch (error) {
         res.status(500 || error?.status).send(error?.message || error);
     }
 }
@@ -746,7 +767,7 @@ const deleteFromCart = async (req, res) => {
 
 //<<--------------------------------------------------->>
 
-const sendEmail = async (email, token) => {
+const sendRegisterEmail = async (email, token) => {
     const hostName = "smtp-relay.sendinblue.com";
     const contactEmail = "valki.dev@gmail.com";
     const password = "EBZDpNvfYhIR4j6x";
@@ -762,11 +783,37 @@ const sendEmail = async (email, token) => {
     });
 
     let info = await transporter.sendMail({
-        from: '"Valki 👾" <valki.dev@gmail.com>', // sender address
+        from: '"Valki-games 👾" <valki.dev@gmail.com>', // sender address
         to: email, // list of receivers
         subject: "Verifica tu cuenta", // Subject line
         text: "Hello world?", // plain text body
-        html: sendEmailTemplate(token), // html body
+        html: sendRegisterEmailTemplate(token), // html body
+    });
+
+    console.log(info.response);
+}
+
+const sendSaleEmail = async (email, orderNumber, productName, price) => {
+    const hostName = "smtp-relay.sendinblue.com";
+    const contactEmail = "valki.dev@gmail.com";
+    const password = "EBZDpNvfYhIR4j6x";
+
+    let transporter = nodemailer.createTransport({
+        host: hostName,
+        port: 587,
+        secure: false,
+        auth: {
+            user: contactEmail,
+            pass: password,
+        },
+    });
+
+    let info = await transporter.sendMail({
+        from: '"Valki-games 👾" <valki.dev@gmail.com>',
+        to: email,
+        subject: "Pago aceptado",
+        text: "Hello world?",
+        html: sendSaleEmailTemplate(orderNumber, productName, price),
     });
 
     console.log(info.response);

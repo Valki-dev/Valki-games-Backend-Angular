@@ -85,6 +85,22 @@ const getGamesRanking = async (req, res) => {
     }
 }
 
+const getBestSellingGenres = async (req, res) => {
+    try {   
+        const [results, metadata] = await sequelize.query("SELECT P.gender, ROUND(AVG(S.price), 2) AS 'data' FROM sales S JOIN products P ON S.productId = P.id GROUP BY P.gender");
+
+        // res.status(200).send(results)
+
+        if(results.length > 0) {
+            res.status(200).send(results);
+        } else {
+            res.status(500).send({message: "Some error occurred while retrieving best-selling genres"});
+        }
+    } catch(error) {
+        res.status(error?.status || 500).send(error?.message || error);
+    }
+}
+
 //<<-------------------- UPDATE -------------------->>
 
 const updateStock = async (req, res) => {
@@ -229,6 +245,7 @@ module.exports = {
     getGameById,
     getGameByName,
     getGamesRanking,
+    getBestSellingGenres,
     updateStock,
     updateGame,
     deleteGame

@@ -9,7 +9,8 @@ router.post("/", upload.single("file"), fileController.fileUpload)
 
 //<<-------------------- GET -------------------->>
 router.get("/", gameController.getAllGames);
-router.get("/ranking", gameController.getGamesRanking )
+router.get("/ranking", gameController.getGamesRanking );
+router.get("/best-selling", gameController.getBestSellingGenres);
 router.get("/:id", gameController.getGameById);
 router.get("/search/:name", gameController.getGameByName);
 //<<-------------------- UPDATE -------------------->>
