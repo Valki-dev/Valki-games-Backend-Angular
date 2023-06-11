@@ -2,7 +2,7 @@ const  Sequelize  = require('sequelize');
 
 
 const sequelize = new Sequelize({
-    database: 'videogames',
+    database: 'videogames2',
     username: 'root',
     password: 'root',
     dialect: 'mysql',

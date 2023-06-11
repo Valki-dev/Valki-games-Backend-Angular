@@ -1,13 +1,12 @@
 const { sequelize } = require('../database/connection');
 const { DataTypes } = require('sequelize');
-const { Wishlist } = require("./Wishlist");
 
 const Videogame = sequelize.define("Videogame", {
     id: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
         allowNull: false,
-        primaryKey: true,
-        autoIncrement: true
+        primaryKey: true
     },
     name: {
         type: DataTypes.TEXT

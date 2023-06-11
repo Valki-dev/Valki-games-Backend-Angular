@@ -18,7 +18,6 @@ const fileUpload = (req, res) => {
       })
     )
     .on('error', (err) => {
-      console.log(err);
       res.status(500).send({});
     })
     .on('data', (chunk) => {

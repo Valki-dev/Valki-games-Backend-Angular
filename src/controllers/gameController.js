@@ -1,6 +1,5 @@
-const { models, sequelize } = require("../database/connection");
+const { sequelize } = require("../database/connection");
 const { Videogame } = require("../models/Videogame");
-const { Sale } = require("../models/Sale")
 
 const { Op } = require("sequelize");
 
@@ -71,9 +70,7 @@ const getGameByName = async (req, res) => {
 
 const getGamesRanking = async (req, res) => {
     try {   
-        const [results, metadata] = await sequelize.query("SELECT S.productId, COUNT(S.productId) as 'totalVentas', P.* FROM sales S JOIN products P ON S.productId = P.id GROUP BY productId ORDER BY COUNT(S.productId) DESC LIMIT 5");
-
-        // res.status(200).send(results)
+        const [results] = await sequelize.query("SELECT S.productId, COUNT(S.productId) as 'totalVentas', P.* FROM sales S JOIN products P ON S.productId = P.id GROUP BY productId ORDER BY COUNT(S.productId) DESC LIMIT 5");
 
         if(results.length > 0) {
             res.status(200).send(results);
@@ -88,8 +85,6 @@ const getGamesRanking = async (req, res) => {
 const getBestSellingGenres = async (req, res) => {
     try {   
         const [results, metadata] = await sequelize.query("SELECT P.gender, ROUND(AVG(S.price), 2) AS 'data' FROM sales S JOIN products P ON S.productId = P.id GROUP BY P.gender");
-
-        // res.status(200).send(results)
 
         if(results.length > 0) {
             res.status(200).send(results);

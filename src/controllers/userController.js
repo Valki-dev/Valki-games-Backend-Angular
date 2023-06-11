@@ -6,10 +6,10 @@ const { User } = require("../models/User");
 const { Wishlist } = require("../models/Wishlist");
 const { Cart } = require("../models/Cart");
 const { Sale } = require("../models/Sale");
-const { use } = require("../v2/UsersRoutes");
 const nodemailer = require("nodemailer");
 const { sendRegisterEmailTemplate, sendSaleEmailTemplate } = require("../email/emailTemplate");
-const stripe = require('stripe')('sk_test_51NExalGtd86gxW1pp9VdL0hECbOd7rf9kCSJZehkz3O2FYhPzx5iTOyCb7DdTdXTSvG4qZkvOHrnfFIF9f7hDVfx00z18V9xpE');
+const {config} = require("../config/config");
+const stripe = require('stripe')(config.srtipeSecretKey);
 
 
 //<<-------------------- POST -------------------->>
@@ -272,8 +272,7 @@ const payment = async (req, res) => {
             currency: 'eur',
             source: stripeToken,
             capture: false,
-            description: 'Realizando pago',
-            receipt_email: 'flavio.oriap@gmail.com'
+            description: 'Realizando pago'
         });
 
         try {
@@ -287,10 +286,6 @@ const payment = async (req, res) => {
         res.status(400).send(error?.message || error);
         return;
     }
-    
-
-    
-
 
 }
 
@@ -497,7 +492,6 @@ const getSaleByOrderNumber = async (req, res) => {
 
 //<<-------------------- UPDATE -------------------->>
 
-//TODO Comprobar que este método funciona
 const updateUser = async (req, res) => {
     const { body: { userId, userName, email, phoneNumber, subscriptionDate } } = req;
 
@@ -520,7 +514,6 @@ const updateUser = async (req, res) => {
         const user = await User.findByPk(userId);
 
         if (user) {
-            // const hashedPassword = bycript.hashSync(password, saltRounds);
 
             try {
                 const updatedUser = await User.update({
@@ -771,35 +764,35 @@ const deleteFromCart = async (req, res) => {
 //<<--------------------------------------------------->>
 
 const sendRegisterEmail = async (email, token) => {
-    const hostName = "smtp-relay.sendinblue.com";
-    const contactEmail = "valki.dev@gmail.com";
-    const password = "EBZDpNvfYhIR4j6x";
+    const hostName = config.smtpHost;
+    const contactEmail = config.smtpContactEmail;
+    const password = config.smtpPassword;
 
     let transporter = nodemailer.createTransport({
         host: hostName,
         port: 587,
-        secure: false, // true for 465, false for other ports
+        secure: false, 
         auth: {
-            user: contactEmail, // generated ethereal user
-            pass: password, // generated ethereal password
+            user: contactEmail, 
+            pass: password,
         },
     });
 
     let info = await transporter.sendMail({
-        from: '"Valki-games 👾" <valki.dev@gmail.com>', // sender address
-        to: email, // list of receivers
-        subject: "Verifica tu cuenta", // Subject line
-        text: "Hello world?", // plain text body
-        html: sendRegisterEmailTemplate(token), // html body
+        from: '"Valki-games 👾" <valki.dev@gmail.com>', 
+        to: email, 
+        subject: "Verifica tu cuenta", 
+        text: "Hello world?", 
+        html: sendRegisterEmailTemplate(token), 
     });
 
     console.log(info.response);
 }
 
 const sendSaleEmail = async (email, orderNumber, productName, price) => {
-    const hostName = "smtp-relay.sendinblue.com";
-    const contactEmail = "valki.dev@gmail.com";
-    const password = "EBZDpNvfYhIR4j6x";
+    const hostName = config.smtpHost;
+    const contactEmail = config.smtpContactEmail;
+    const password = config.smtpPassword;
 
     let transporter = nodemailer.createTransport({
         host: hostName,

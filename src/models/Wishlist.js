@@ -1,7 +1,5 @@
 const { sequelize } = require("../database/connection");
 const { DataTypes } = require("sequelize");
-const { User } = require("./User");
-const { Videogame } = require("./Videogame");
 
 const Wishlist = sequelize.define("Wishlist", {
     userId: {
