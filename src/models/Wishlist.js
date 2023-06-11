@@ -8,7 +8,7 @@ const Wishlist = sequelize.define("Wishlist", {
         primaryKey: true
     },
     productId: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.UUID,
         allowNull: false,
         primaryKey: true
     }

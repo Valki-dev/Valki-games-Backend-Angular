@@ -9,7 +9,7 @@ const Sale = sequelize.define("Sale", {
         primaryKey: true
     },
     productId: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.UUID,
         allowNull: false,
         primaryKey: true
     },
