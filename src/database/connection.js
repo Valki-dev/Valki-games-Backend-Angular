@@ -10,7 +10,12 @@ if (config.modeEnviroment === 'production') {
         password: config.production.password,
         dialect: 'mysql',
         host: config.production.host,
-        port: Number(config.production.port)
+        dialectOptions: {
+            ssl: {
+                rejectUnauthorized: false,        
+            }
+        },
+        port: config.production.port
     });
 } else {
     sequelize = new Sequelize({
